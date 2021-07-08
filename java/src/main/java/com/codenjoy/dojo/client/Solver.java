@@ -1,5 +1,7 @@
 package com.codenjoy.dojo.client;
 
+import com.codenjoy.dojo.spacerace.client.Board;
+
 /*-
  * #%L
  * Codenjoy - it's a dojo-like platform from developers to developers.
@@ -27,12 +29,12 @@ package com.codenjoy.dojo.client;
  * Любая реализация AI должна реализовать этот интерфейс.
  * @param <B> реализация {@see AbstractBoard} для текущей игры
  */
-public interface Solver<B extends ClientBoard> {
+public interface Solver {
 
     /**
      * Каждую секунду сервер будет приганять сюда актуальное состояние доски.
      * @param board объект инкапсулирующий доску
      * @return команда, что делать серверу
      */
-    String get(B board);
+    String get(Board board);
 }

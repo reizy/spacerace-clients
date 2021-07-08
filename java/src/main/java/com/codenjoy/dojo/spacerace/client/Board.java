@@ -1,73 +1,196 @@
 package com.codenjoy.dojo.spacerace.client;
 
-/*-
- * #%L
- * Codenjoy - it's a dojo-like platform from developers to developers.
- * %%
- * Copyright (C) 2018 Codenjoy
- * %%
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public
- * License along with this program.  If not, see
- * <http://www.gnu.org/licenses/gpl-3.0.html>.
- * #L%
- */
-
-import com.codenjoy.dojo.client.AbstractBoard;
-import com.codenjoy.dojo.client.Point;
-import com.codenjoy.dojo.spacerace.model.Elements;
-
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import static com.codenjoy.dojo.spacerace.model.Elements.*;
+import com.codenjoy.dojo.spacerace.model.Element;
 
-/**
- * Класс, обрабатывающий строковое представление доски.
- * Содержит ряд унаследованных методов {@see AbstractBoard},
- * но ты можешь добавить сюда любые свои методы на их основе.
- */
-public class Board extends AbstractBoard<Elements> {
+import lombok.Getter;
 
-    @Override
-    public Elements valueOf(char ch) {
-        return Elements.valueOf(ch);
+public class Board {
+    private Map<Point, Element> boardAsDictionary = null;
+    @Getter
+    private String boardString;
+    @Getter
+    private int size;
+
+    public Board(String boardString) {
+        this.boardString = boardString.replace("\n", "");
+        size = (int) Math.sqrt(boardString.length());
     }
 
-    public boolean isBarrierAt(int x, int y) {
-        return isAt(x, y, WALL);
+    /// Transform game board to dictionary Point -> Element. Useable to LINQ and
+    public Map<Point, Element> getAllExtend() {
+        if (boardAsDictionary == null) {
+            boardAsDictionary = new HashMap<Point, Element>();
+            for (int j = 0; j < boardString.length(); j++) {
+                boardAsDictionary.put(getPointByShift(j), Element.valueOf(boardString.charAt(j)));
+            }
+        }
+
+        return boardAsDictionary;
     }
 
-    public Point getMe() {
-        List<Point> list = get(DEAD_HERO, HERO);
-        if (list.isEmpty()){
-            return pt(1, 1);
-        } else {
+    /// Returns the list of points for the given element type.
+    public List<Point> findAll(Element... elements) {
+        return enumeratePoints(new HashSet<Element>(Arrays.asList(elements)));
+    }
+
+    /// Returns the point where your hero is.
+    public Point getMyPosition() {
+        List<Point> list = enumeratePoints(Element.HERO);
+        if (list.size() > 0) {
             return list.get(0);
+        } else {
+            return null;
         }
     }
 
-    public boolean isGameOver() {
-        return !get(DEAD_HERO).isEmpty();
+    /// Returns a Element object at coordinates x,y.
+    public Element getAt(int x, int y) {
+        return Element.valueOf(boardString.charAt(getShiftByPoint(x, y)));
     }
 
-    public boolean isBombAt(int x, int y) {
-        return isAt(x, y, BOMB);
+    /// Returns True if Element is at x,y coordinates.
+    public boolean hasElementAt(int x, int y, Element element) {
+        if (isOutOfBoard(x, y)) {
+            return false;
+        }
+
+        return getAt(x, y) == element;
     }
 
-    public boolean isStoneAt(int x, int y) {
-        return isAt(x, y, STONE);
+    public boolean hasElementAt(Point p, Element element) {
+        return hasElementAt(p.getX(), p.getY(), element);
     }
 
-    public boolean isBulletAt(int x, int y) {
-        return isAt(x, y, BULLET);
+    /// Returns true if barrier is at x,y.
+    public boolean isBarrierAt(int x, int y) {
+        return hasElementAt(x, y, Element.WALL);
     }
+
+    /// Returns False if your hero still alive.
+    public boolean isHeroDead() {
+        return boardString.contains(Element.DEAD_HERO.toString());
+    }
+
+    /// Return the list of points for other heroes.
+    public List<Point> GetEnemyPositions() {
+        return enumeratePoints(Element.OTHER_HERO);
+    }
+
+    /// Returns the list of points for other heroes.
+    public List<Point> GetOtherHeroPositions() {
+        return enumeratePoints(Element.OTHER_HERO);
+    }
+
+    /// <summary>
+    /// Returns the list of walls element Points.
+    /// </summary>
+    /// <returns></returns>
+    public List<Point> getWallPositions() {
+        return enumeratePoints(Element.WALL);
+    }
+
+    /// <summary>
+    /// Returns the list of barriers Points.
+    /// </summary>
+    /// <returns></returns>
+    public List<Point> GetBarriers() {
+        return enumeratePoints(Element.WALL);
+    }
+
+    /// Check if near exists element of chosen type.
+    public boolean IsNearToElement(int x, int y, Element element) {
+        if (isOutOfBoard(x, y))
+            return false;
+
+        return EnumerateNeighbors(new Point(x, y)).stream()
+                .anyMatch(neighbor -> hasElementAt(neighbor, element));
+    }
+
+    /// Returns True if enemy exists in current point.
+    public boolean HasEnemyAt(int x, int y) {
+        return hasElementAt(x, y, Element.OTHER_HERO);
+    }
+
+    /// Returns True if other hero exists in current point.
+    public boolean HasOtherHeroAt(int x, int y) {
+        return hasElementAt(x, y, Element.OTHER_HERO);
+    }
+
+    /// Returns True if wall exists in current point.
+    public boolean HasWallAt(int x, int y) {
+        return hasElementAt(x, y, Element.WALL);
+    }
+
+    /// Counts the number of occurrences of element nearby.
+    public long GetCountElementsNearToPoint(int x, int y, Element element) {
+        if (isOutOfBoard(x, y))
+            return 0;
+
+        return EnumerateNeighbors(new Point(x, y)).stream()
+                .filter(neighbor -> hasElementAt(neighbor, element)).count();
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Board:\n");
+        for (int i = 0; i < size; i++) {
+            sb.append(boardString.substring(i * size, i * size + size));
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    private List<Point> EnumerateNeighbors(Point point) {
+
+        List<Point> list = new ArrayList<>();
+        list.add(point.shiftLeft());
+        return list;
+    }
+
+    private List<Point> enumeratePoints(Element element) {
+        return IntStream
+                .range(0, boardString.length())
+                .filter(i -> element == Element.valueOf(boardString.charAt(i)))
+                .mapToObj(e -> getPointByShift(e))
+                .collect(Collectors.toList());
+    }
+
+    private List<Point> enumeratePoints(HashSet<Element> elements) {
+        return IntStream
+                .range(0, boardString.length())
+                .filter(i -> elements.contains(Element.valueOf(boardString.charAt(i))))
+                .mapToObj(e -> getPointByShift(e))
+                .collect(Collectors.toList());
+    }
+
+    protected boolean hasElementAt(int x, int y, List<Element> elements) {
+        return elements.stream().anyMatch(elem -> hasElementAt(x, y, elem));
+    }
+
+    protected boolean hasElementAt(Point point, List<Element> elements) {
+        return elements.stream().anyMatch(elem -> hasElementAt(point.getX(), point.getY(), elem));
+    }
+
+    private int getShiftByPoint(int x, int y) {
+        return y * size + x;
+    }
+
+    private Point getPointByShift(int shift) {
+        return new Point(shift % size, shift / size);
+    }
+
+    private boolean isOutOfBoard(int x, int y) {
+        return (x >= size || y >= size || x < 0 || y < 0);
+    }
+
 }

@@ -1,4 +1,5 @@
-package com.codenjoy.dojo.client;
+package com.codenjoy.dojo.spacerace.client;
+
 
 /*-
  * #%L
@@ -22,32 +23,30 @@ package com.codenjoy.dojo.client;
  * #L%
  */
 
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Каждый объект на поле имеет свои координаты. Этот класс обычно используется дял указания координат или как родитель.
- * Может использоваться в коллекциях.
+ * Каждый объект на поле имеет свои координаты. Этот класс обычно используется
+ * дял указания координат или как родитель. Может использоваться в коллекциях.
  */
 @Getter
 @Setter
 @AllArgsConstructor
-public class PointImpl implements Point, Comparable<Point> {
+public class Point implements Comparable<Point> {
 
-    protected int x;
-    protected int y;
+    protected final int x;
+    protected final int y;
 
-    public PointImpl() {
+    public Point() {
         this(-1, -1);
     }
 
-    public PointImpl(Point point) {
+    public Point(Point point) {
         this(point.getX(), point.getY());
     }
 
-    @Override
     public boolean itsMe(Point pt) {
         return itsMe(pt.getX(), pt.getY());
     }
@@ -56,26 +55,22 @@ public class PointImpl implements Point, Comparable<Point> {
         return this.x == x && this.y == y;
     }
 
-    @Override
     public boolean isOutOf(int size) {
         return isOutOf(0, 0, size);
     }
 
-    @Override
     public boolean isOutOf(int dw, int dh, int size) {
         return x < dw || y < dh || y > size - 1 - dh || x > size - 1 - dw;
     }
 
-    @Override
     public double distance(Point other) {
         int dx = x - other.getX();
         int dy = y - other.getY();
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    @Override
     public int hashCode() {
-        return x*1000 + y;
+        return x * 1000 + y;
     }
 
     public int parentHashCode() {
@@ -86,54 +81,28 @@ public class PointImpl implements Point, Comparable<Point> {
         return super.equals(o);
     }
 
-    @Override
     public String toString() {
         return String.format("[%s,%s]", x, y);
     }
 
-    @Override
     public boolean equals(Object o) {
         if (o == this) {
             return true;
         }
 
         try {
-            return ((PointImpl)o).itsMe(x, y);
+            return ((Point) o).itsMe(x, y);
         } catch (Exception e) {
             return false;
         }
     }
 
-    @Override
-    public void move(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    @Override
-    public void move(Point pt) {
-        this.x = pt.getX();
-        this.y = pt.getY();
-    }
-
-    @Override
     public Point copy() {
-        return new PointImpl(this);
-    }
-
-    @Override
-    public void moveDelta(Point delta) {
-        x += delta.getX();
-        y += delta.getY();
-    }
-
-    @Override
-    public void move(Direction direction) {
-        this.move(direction.change(this));
+        return new Point(this);
     }
 
     public static Point pt(int x, int y) {
-        return new PointImpl(x, y);
+        return new Point(x, y);
     }
 
     @Override
@@ -144,9 +113,27 @@ public class PointImpl implements Point, Comparable<Point> {
         return Integer.compare(this.hashCode(), o.hashCode());
     }
 
-    @Override
     public Point relative(Point offset) {
         return pt(x - offset.getX(), y - offset.getY());
     }
 
+    /// Returns new Point object shifted left to "delta" points
+    public Point shiftLeft() {
+        return new Point(x - 1, y);
+    }
+
+    /// Returns new Point object shifted right to "delta" points
+    public Point shiftRight() {
+        return new Point(x + 1, y);
+    }
+
+    /// Returns new Point object shifted top "delta" points
+    public Point shiftTop() {
+        return new Point(x, y - 1);
+    }
+
+    /// Returns new Point object shifted bottom "delta" points
+    public Point shiftBottom() {
+        return new Point(x, y + 1);
+    }
 }

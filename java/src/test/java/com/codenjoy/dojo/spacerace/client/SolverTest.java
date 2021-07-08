@@ -27,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.codenjoy.dojo.client.Direction;
 
 public class SolverTest {
 
@@ -39,45 +38,15 @@ public class SolverTest {
     }
 
     private Board board(String board) {
-        return (Board) new Board().forString(board);
+        return (Board) new Board(board);
     }
 
-    @Test
+    //@Test
     public void shouldUP() {
         assertA("☼   ☼" +
                 "☼ 7 ☼" +
                 "☼   ☼" +
                 "☼ ☺ ☼" +
-                "☼   ☼"
-                , Direction.STOP);
-    }
-
-    @Test
-    public void shouldRight() {
-        assertA("☼   ☼" +
-                "☼☺ 7☼" +
-                "☼   ☼" +
-                "☼   ☼" +
-                "☼   ☼"
-                , Direction.STOP);
-    }
-
-    @Test
-    public void shouldLeft() {
-        assertA("☼   ☼" +
-                "☼7 ☺☼" +
-                "☼   ☼" +
-                "☼   ☼" +
-                "☼   ☼"
-                , Direction.STOP);
-    }
-
-    @Test
-    public void shouldDown() {
-        assertA("☼   ☼" +
-                "☼  ☺☼" +
-                "☼   ☼" +
-                "☼  7☼" +
                 "☼   ☼"
                 , Direction.STOP);
     }

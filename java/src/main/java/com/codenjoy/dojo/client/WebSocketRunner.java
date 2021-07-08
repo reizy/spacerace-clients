@@ -1,5 +1,28 @@
 package com.codenjoy.dojo.client;
 
+import java.io.Closeable;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
+import java.net.ConnectException;
+import java.net.URI;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.eclipse.jetty.websocket.api.RemoteEndpoint;
+import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.UpgradeException;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
+import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.eclipse.jetty.websocket.client.WebSocketClient;
+
+import com.codenjoy.dojo.spacerace.client.Board;
+
 /*-
  * #%L
  * Codenjoy - it's a dojo-like platform from developers to developers.
@@ -24,22 +47,6 @@ package com.codenjoy.dojo.client;
 
 
 import lombok.SneakyThrows;
-import org.eclipse.jetty.util.ssl.SslContextFactory;
-import org.eclipse.jetty.websocket.api.RemoteEndpoint;
-import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.UpgradeException;
-import org.eclipse.jetty.websocket.api.annotations.*;
-import org.eclipse.jetty.websocket.client.WebSocketClient;
-
-import java.io.Closeable;
-import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
-import java.net.ConnectException;
-import java.net.URI;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class WebSocketRunner implements Closeable {
     
@@ -58,14 +65,12 @@ public class WebSocketRunner implements Closeable {
     private Session session;
     private WebSocketClient client;
     private Solver solver;
-    private ClientBoard board;
     private Runnable onClose;
     private boolean forceClose;
     private URI uri;
 
-    public WebSocketRunner(Solver solver, ClientBoard board) {
+    public WebSocketRunner(Solver solver) {
         this.solver = solver;
-        this.board = board;
         this.forceClose = false;
     }
 
@@ -76,34 +81,34 @@ public class WebSocketRunner implements Closeable {
      * @param board board
      * @return
      */
-    public static WebSocketRunner runClient(String[] args, String url, Solver solver, ClientBoard board) {
+    public static WebSocketRunner runClient(String[] args, String url, Solver solver) {
         if (args == null || args.length != 1) {
-            return runClient(url, solver, board);
+            return runClient(url, solver);
         } else {
-            return runClient(args[0], solver, board);
+            return runClient(args[0], solver);
         }
     }
 
-    public static WebSocketRunner runClient(String url, Solver solver, ClientBoard board) {
+    public static WebSocketRunner runClient(String url, Solver solver) {
 
         UrlParser parser = new UrlParser(url);
         return run(parser.protocol, parser.server, parser.context,
                 parser.userName, parser.code,
-                solver, board, ATTEMPTS);
+                solver, ATTEMPTS);
     }
 
-    public static WebSocketRunner runAI(String id, String code, Solver solver, ClientBoard board) {
+    public static WebSocketRunner runAI(String id, String code, Solver solver, Board board) {
         PRINT_TO_CONSOLE = false;
         return run(UrlParser.WS_PROTOCOL, LOCALHOST + ":" + CodenjoyContext.getPort(),
-                CodenjoyContext.getContext(), id, code, solver, board, 1);
+                CodenjoyContext.getContext(), id, code, solver, 1);
     }
 
     private static WebSocketRunner run(String protocol,
                                        String server, String context,
                                        String id, String code,
-                                       Solver solver, ClientBoard board,
+                                       Solver solver,
                                        int countAttempts) {
-        return run(getUri(protocol, server, context, id, code), solver, board, countAttempts);
+        return run(getUri(protocol, server, context, id, code), solver, countAttempts);
     }
 
     @SneakyThrows
@@ -111,8 +116,8 @@ public class WebSocketRunner implements Closeable {
         return new URI(String.format(WS_URI_PATTERN, protocol, server, context, id, code));
     }
 
-    public static WebSocketRunner run(URI uri, Solver solver, ClientBoard board, int countAttempts) {
-        WebSocketRunner client = new WebSocketRunner(solver, board);
+    public static WebSocketRunner run(URI uri, Solver solver, int countAttempts) {
+        WebSocketRunner client = new WebSocketRunner(solver);
         client.start(uri, countAttempts);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (client != null) {
@@ -173,10 +178,6 @@ public class WebSocketRunner implements Closeable {
         return solver;
     }
 
-    public ClientBoard board() {
-        return board;
-    }
-
     @WebSocket
     public class ClientSocket {
 
@@ -215,7 +216,7 @@ public class WebSocketRunner implements Closeable {
                     throw new IllegalArgumentException("Unexpected board format, should be: " + BOARD_FORMAT);
                 }
 
-                board.forString(matcher.group(1));
+                Board board = new Board(matcher.group(1));
                 print("Board: \n" + board);
 
                 String answer = solver.get(board);

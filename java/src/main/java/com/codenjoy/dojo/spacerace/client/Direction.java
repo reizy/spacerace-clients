@@ -1,4 +1,4 @@
-package com.codenjoy.dojo.client;
+package com.codenjoy.dojo.spacerace.client;
 
 /*-
  * #%L
@@ -93,7 +93,7 @@ public enum Direction {
      * @return New point that will be after move from current point in given direction.
      */
     public Point change(Point point) {
-        return PointImpl.pt(changeX(point.getX()),
+        return Point.pt(changeX(point.getX()),
                 changeY(point.getY()));
     }
 
@@ -167,4 +167,5 @@ public enum Direction {
             return toString() + ",ACT";
         }
     }
+
 }
